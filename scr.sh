@@ -18,3 +18,4 @@ then
 else
     echo "ERROR: No existe el archivo ${DUMP_PATH}dump.sql.${DATE}.gz.encrypted."
 fi
+
