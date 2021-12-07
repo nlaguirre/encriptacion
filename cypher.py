@@ -210,7 +210,7 @@ def decrypt_file(filename):
 
     # Read the encrypted file into memory
     try:
-        with open(filename + '.encrypted', 'rb') as file:
+        with open(filename, 'rb') as file:
             file_contents = file.read()
     except IOError as e:
         logging.error(e)
