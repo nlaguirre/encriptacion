@@ -18,6 +18,7 @@
 import base64
 import logging
 import boto3
+import sys
 from botocore.exceptions import ClientError
 
 # To perform the optional file encryption/decryption operations, the Python
@@ -25,7 +26,13 @@ from botocore.exceptions import ClientError
 #       pip install cryptography
 from cryptography.fernet import Fernet
 
-def retrieve_cmk(desc):
+#bucket_name = 'bucket-name'
+key_id = 'fdaca60b-6470-4cee-8b7b-dd3e5a49ad31'
+key_arn = 'arn:aws:kms:us-east-1:753941739980:key/fdaca60b-6470-4cee-8b7b-dd3e5a49ad31'
+file_name = sys.argv[1]
+action = sys.argv[2]
+
+def retrieve_cmk():
     """Retrieve an existing KMS CMK based on its description
     :param desc: Description of CMK specified when the CMK was created
     :return Tuple(KeyId, KeyArn) where:
@@ -38,41 +45,41 @@ def retrieve_cmk(desc):
     # Retrieve a list of existing CMKs
     # If more than 100 keys exist, retrieve and process them in batches
     kms_client = boto3.client('kms')
+    #try:
+    #    response = kms_client.list_keys()
+    #except ClientError as e:
+    #    logging.error(e)
+    #    return None, None
+
+    #done = False
+    #while not done:
+    #    for cmk in response['Keys']:
+    # Get info about the key, including its description
     try:
-        response = kms_client.list_keys()
+        return key_id, key_arn
     except ClientError as e:
         logging.error(e)
         return None, None
 
-    done = False
-    while not done:
-        for cmk in response['Keys']:
-            # Get info about the key, including its description
-            try:
-                key_info = kms_client.describe_key(KeyId=cmk['KeyArn'])
-            except ClientError as e:
-                logging.error(e)
-                return None, None
-
-            # Is this the key we're looking for?
-            if key_info['KeyMetadata']['Description'] == desc:
-                return cmk['KeyId'], cmk['KeyArn']
+    # Is this the key we're looking for?
+    #if key_info['KeyMetadata']['Description'] == desc:
+    #    return cmk['KeyId'], cmk['KeyArn']
 
         # Are there more keys to retrieve?
-        if not response['Truncated']:
+        #if not response['Truncated']:
             # No, the CMK was not found
-            logging.debug('A CMK with the specified description was not found')
-            done = True
-        else:
+        #    logging.debug('A CMK with the specified description was not found')
+        #    done = True
+        #else:
             # Yes, retrieve another batch
-            try:
-                response = kms_client.list_keys(Marker=response['NextMarker'])
-            except ClientError as e:
-                logging.error(e)
-                return None, None
+        #    try:
+        #        response = kms_client.list_keys(Marker=response['NextMarker'])
+        #    except ClientError as e:
+        #        logging.error(e)
+        #        return None, None
 
     # All existing CMKs were checked and the desired key was not found
-    return None, None
+    #return None, None
 
 def create_cmk(desc='Customer Master Key'):
     """Create a KMS Customer Master Key
@@ -98,6 +105,7 @@ def create_cmk(desc='Customer Master Key'):
 def create_data_key(cmk_id, key_spec='AES_256'):
     """Generate a data key to use when encrypting and decrypting data
     :param cmk_id: KMS CMK ID or ARN under which to generate and encrypt the
+    data key.
     data key.
     :param key_spec: Length of the data encryption key. Supported values:
         'AES_128': Generate a 128-bit symmetric key
@@ -312,16 +320,15 @@ def main():
 
     # Specify a filename to encrypt/decrypt. To skip these operations,
     # specify an empty string.
-    file_to_encrypt = 'cc-records.csv'
-    bucket_name = 'testkmspoc-oca2'
-    upload_to_s3 = True
+    file_to_encrypt = file_name
+    upload_to_s3 = False
 
     # Set up logging
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)s: %(asctime)s: %(message)s')
 
     # Does the desired CMK already exist?
-    cmk_id, cmk_arn = retrieve_cmk(cmk_description)
+    cmk_id, cmk_arn = retrieve_cmk()
     if cmk_id is None:
         # No, create it
         cmk_id, cmk_arn = create_cmk(cmk_description)
@@ -337,16 +344,21 @@ def main():
         # An encrypted data key is also written to the output file.
         # The encrypted file can be decrypted at any time and by any program
         # that has the credentials to decrypt the data key.
-        if encrypt_file(file_to_encrypt, cmk_arn):
-            logging.info(f'{file_to_encrypt} encrypted to '
-                         f'{file_to_encrypt}.encrypted')
-
+        if action == "encrypt":
+            if encrypt_file(file_to_encrypt, cmk_arn):
+                logging.info(f'{file_to_encrypt} encrypted to '
+                             f'{file_to_encrypt}.encrypted')
+        
+        elif action == "decrypt":
             # Decrypt the file
             if decrypt_file(file_to_encrypt):
                 # Decrypted file contents are written to <file_to_encrypt>.decrypted
                 logging.info(f'{file_to_encrypt}.encrypted decrypted to '
                              f'{file_to_encrypt}.decrypted')
 
+        else:
+            logging.info('Syntax to encrypt/decrypt: ./cypher filename encrypt  # could be decrypt instead')
+            exit(1)
         # Upload file to s3 bucket
         if upload_to_s3:
             # Verify bucket exists, if not, create it.
