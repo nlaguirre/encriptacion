@@ -26,9 +26,12 @@ from botocore.exceptions import ClientError
 #       pip install cryptography
 from cryptography.fernet import Fernet
 
+key_id=os.environ['KEY_ID']
+key_arn=os.environ['KEY_ARN']
+
 #bucket_name = 'bucket-name'
-key_id = 'fdaca60b-6470-4cee-8b7b-dd3e5a49ad31'
-key_arn = 'arn:aws:kms:us-east-1:753941739980:key/fdaca60b-6470-4cee-8b7b-dd3e5a49ad31'
+#key_id = 'fdaca60b-6470-4cee-8b7b-dd3e5a49ad31'
+#key_arn = 'arn:aws:kms:us-east-1:753941739980:key/fdaca60b-6470-4cee-8b7b-dd3e5a49ad31'
 file_name = sys.argv[1]
 action = sys.argv[2]
 
