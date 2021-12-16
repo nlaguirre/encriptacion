@@ -19,6 +19,7 @@ import base64
 import logging
 import boto3
 import sys
+import os
 from botocore.exceptions import ClientError
 
 # To perform the optional file encryption/decryption operations, the Python
